@@ -102,6 +102,7 @@ echo "\n";
 echo "📅 4. Verificando validade...\n";
 
 $certData = openssl_x509_parse(file_get_contents($certPath));
+$certificateCN = $certData['subject']['CN'] ?? null;
 if ($certData) {
     $validFrom = date('d/m/Y H:i:s', $certData['validFrom_time_t']);
     $validTo = date('d/m/Y H:i:s', $certData['validTo_time_t']);
@@ -207,6 +208,18 @@ if (file_exists($validateFile)) {
     } else {
         $warnings[] = "⚠️  Domínio não configurado corretamente";
         $warnings[] = "   → Edite validate-merchant.php linha 72";
+    }
+
+    // Validar se o certificado foi emitido para o mesmo Merchant ID configurado
+    if ($merchantId && $certificateCN) {
+        if ($merchantId === $certificateCN) {
+            $success[] = "✅ CN do certificado bate com o Merchant ID ($merchantId)";
+        } else {
+            $errors[] = "❌ CN do certificado ($certificateCN) difere do Merchant ID ($merchantId)";
+            $warnings[] = "   → Gere o CSR usando o Merchant ID correto no campo CN";
+        }
+    } elseif (!$certificateCN) {
+        $warnings[] = "⚠️  Não foi possível ler o CN do certificado para comparar com o Merchant ID";
     }
 } else {
     $errors[] = "❌ validate-merchant.php não encontrado";

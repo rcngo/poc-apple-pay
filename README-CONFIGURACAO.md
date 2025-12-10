@@ -109,6 +109,21 @@ Integração Apple Pay/
 - Verifique se o Merchant ID está correto
 - Verifique se o domínio está registrado no Apple Developer
 - Confirme que os certificados são válidos e não expiraram
+- Rode `php verificar-certificados.php` para validar CN do certificado x Merchant ID
+
+### Checklist rápido antes de testar novamente
+
+1. O domínio cadastrado na Merchant ID está acessível via HTTPS e contém o arquivo `.well-known/apple-developer-merchantid-domain-association`.
+2. O certificado de **Merchant Identity** foi gerado com o **CN exatamente igual** ao seu Merchant ID.
+3. O `validate-merchant.php` usa o mesmo Merchant ID e domínio (ou define `APPLE_PAY_DOMAIN` com o host verificado).
+4. `certs/apple_pay_cert.pem` e `certs/apple_pay_key.pem` existem, estão em formato PEM e com permissões 600.
+5. O teste `php verificar-certificados.php` não retorna erros.
+
+### "Falha ao validar merchant" mesmo com domínio verificado
+
+- Confirme que o host usado no navegador corresponde ao domínio verificado. Se estiver atrás de proxy ou ngrok, defina `APPLE_PAY_DOMAIN=seudominio.com` para evitar que a porta ou o host interno sejam enviados para a Apple.
+- Rode `php verificar-certificados.php` e verifique se aparece `CN do certificado bate com o Merchant ID`. Caso contrário, gere um novo certificado usando o Merchant ID correto.
+- Se o backend continuar retornando 500, copie o JSON de erro (inclui `http_code`, `apple_response` e `payload`) e valide se o `initiativeContext` enviado é exatamente o domínio aprovado pela Apple.
 
 ### Erro CORS
 - Se testar de domínio diferente, ajuste o header `Access-Control-Allow-Origin`

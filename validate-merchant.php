@@ -69,7 +69,12 @@ try {
      */
     $merchantIdentifier = 'merchant.adoorei'; // Seu Merchant ID
     $displayName = 'Loja Teste';                          // Nome exibido no Apple Pay
-    $domainName = 'lojateste.checkoout.dev.br';      // Domínio atual
+
+    // Domínio atual (precisa estar registrado no Apple Pay Merchant ID)
+    // Preferimos APPLE_PAY_DOMAIN, mas por padrão usamos o host da requisição.
+    $forwardedHost = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? null;
+    $requestHost = $forwardedHost ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $domainName = getenv('APPLE_PAY_DOMAIN') ?: preg_replace('/:\\d+$/', '', strtolower($requestHost));
     
     /**
      * Caminhos dos certificados
@@ -84,6 +89,19 @@ try {
     }
     if (!file_exists($keyPath)) {
         throw new Exception("Chave privada não encontrada: {$keyPath}");
+    }
+
+    // Valida se o CN do certificado bate com o Merchant ID configurado
+    $certContent = file_get_contents($certPath);
+    $certData = openssl_x509_parse($certContent);
+    $certificateCN = $certData['subject']['CN'] ?? null;
+
+    if ($certificateCN === null) {
+        throw new Exception('Não foi possível ler o CN do certificado Apple Pay');
+    }
+
+    if ($certificateCN !== $merchantIdentifier) {
+        throw new Exception("O CN do certificado ({$certificateCN}) difere do Merchant ID configurado ({$merchantIdentifier})");
     }
 
     /**
@@ -112,6 +130,7 @@ try {
         CURLOPT_SSLKEY => $keyPath,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
         CURLOPT_TIMEOUT => 30
     ]);
 
@@ -132,7 +151,9 @@ try {
             'success' => false,
             'message' => 'Erro ao validar merchant Apple Pay',
             'http_code' => $httpCode,
-            'apple_response' => $response
+            'apple_response' => $response,
+            'payload' => $payload,
+            'validation_url' => $validationURL
         ]);
         exit;
     }
