@@ -192,13 +192,22 @@ ngrok http 8000
 
 ### validate-merchant.php
 
-Edite as linhas 70-72:
+Edite as linhas 70-76:
 
 ```php
 $merchantIdentifier = 'merchant.adoorei';           // ← Seu Merchant ID
 $displayName = 'Loja Teste';                        // ← Nome da loja
-$domainName = 'lojateste.checkoout.dev.br';         // ← Seu domínio
+
+// Domínio usado na validação Apple Pay (precisa estar cadastrado no Merchant ID)
+$requestHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$domainName = getenv('APPLE_PAY_DOMAIN') ?: preg_replace('/:\\d+$/', '', strtolower($requestHost));
 ```
+
+- Defina `APPLE_PAY_DOMAIN` se quiser forçar um domínio específico (ex.: o da loja em produção).
+Para chaves privadas com senha, defina `APPLE_PAY_KEY_PASSPHRASE` com a mesma senha usada ao exportar o `.p12`.
+
+- Defina `APPLE_PAY_DOMAIN` se quiser forçar um domínio específico (ex.: o da loja em produção).
+- Caso contrário, o script usa automaticamente o host da requisição (útil para testes com ngrok).
 
 ### index.php
 
@@ -259,6 +268,18 @@ php verificar-certificados.php
 # 2. Conferir Merchant ID
 # Deve ser EXATAMENTE igual ao registrado na Apple
 ```
+
+### ❌ "Load failed" ou erro cURL
+
+**Causas comuns:**
+- Certificado expirado ou com data de validade futura (relógio do servidor errado)
+- Chave privada protegida por senha sem `APPLE_PAY_KEY_PASSPHRASE`
+- Certificados/arquivos PEM sem permissão de leitura para o usuário do PHP
+
+**Solução:**
+- Rode `php verificar-certificados.php` e confirme datas de validade
+- Exporte o `.p12` sem senha ou configure `APPLE_PAY_KEY_PASSPHRASE=suasenha` no ambiente
+- Corrija permissões: `chmod 700 certs && chmod 600 certs/*.pem`
 
 ---
 

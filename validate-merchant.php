@@ -69,7 +69,12 @@ try {
      */
     $merchantIdentifier = 'merchant.adoorei'; // Seu Merchant ID
     $displayName = 'Loja Teste';                          // Nome exibido no Apple Pay
-    $domainName = 'lojateste.checkoout.dev.br';      // Domínio atual
+
+    // Domínio atual (precisa estar registrado no Apple Pay Merchant ID)
+    // Preferimos APPLE_PAY_DOMAIN, mas por padrão usamos o host da requisição.
+    $forwardedHost = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? null;
+    $requestHost = $forwardedHost ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $domainName = getenv('APPLE_PAY_DOMAIN') ?: preg_replace('/:\\d+$/', '', strtolower($requestHost));
     
     /**
      * Caminhos dos certificados
@@ -78,12 +83,36 @@ try {
     $certPath = __DIR__ . '/certs/apple_pay_cert.pem';       // Certificado público
     $keyPath = __DIR__ . '/certs/apple_pay_key.pem';         // Chave privada
 
-    // Verifica se os certificados existem
-    if (!file_exists($certPath)) {
-        throw new Exception("Certificado não encontrado: {$certPath}");
+    // Verifica se os certificados existem e são legíveis
+    if (!file_exists($certPath) || !is_readable($certPath)) {
+        throw new Exception("Certificado não encontrado ou ilegível: {$certPath}");
     }
-    if (!file_exists($keyPath)) {
-        throw new Exception("Chave privada não encontrada: {$keyPath}");
+    if (!file_exists($keyPath) || !is_readable($keyPath)) {
+        throw new Exception("Chave privada não encontrada ou ilegível: {$keyPath}");
+    }
+
+    // Valida se o CN do certificado bate com o Merchant ID configurado
+    $certContent = file_get_contents($certPath);
+    $certData = openssl_x509_parse($certContent);
+    $certificateCN = $certData['subject']['CN'] ?? null;
+    $validFrom = $certData['validFrom_time_t'] ?? null;
+    $validTo = $certData['validTo_time_t'] ?? null;
+
+    if ($certificateCN === null) {
+        throw new Exception('Não foi possível ler o CN do certificado Apple Pay');
+    }
+
+    if ($certificateCN !== $merchantIdentifier) {
+        throw new Exception("O CN do certificado ({$certificateCN}) difere do Merchant ID configurado ({$merchantIdentifier})");
+    }
+
+    $now = time();
+    if ($validFrom !== null && $now < $validFrom) {
+        throw new Exception('Certificado Apple Pay ainda não está válido (verifique data/hora do servidor)');
+    }
+
+    if ($validTo !== null && $now > $validTo) {
+        throw new Exception('Certificado Apple Pay expirado — gere um novo certificado de pagamento');
     }
 
     /**
@@ -98,6 +127,8 @@ try {
         'initiativeContext' => $domainName
     ];
 
+    $sslPassphrase = getenv('APPLE_PAY_KEY_PASSPHRASE') ?: null;
+
     $ch = curl_init($validationURL);
     
     curl_setopt_array($ch, [
@@ -110,32 +141,50 @@ try {
         ],
         CURLOPT_SSLCERT => $certPath,
         CURLOPT_SSLKEY => $keyPath,
+        CURLOPT_KEYPASSWD => $sslPassphrase,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
         CURLOPT_TIMEOUT => 30
     ]);
 
     $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlInfo = curl_getinfo($ch);
+    $httpCode = $curlInfo[CURLINFO_HTTP_CODE] ?? 0;
     $curlError = curl_error($ch);
-    curl_close($ch);
 
     // Verifica erros cURL
     if ($response === false || !empty($curlError)) {
-        throw new Exception("Erro cURL: {$curlError}");
+        $errorDetails = [
+            'error' => $curlError,
+            'errno' => curl_errno($ch),
+            'url' => $validationURL,
+            'cert' => basename($certPath),
+            'key' => basename($keyPath),
+            'tls_version' => $curlInfo['ssl_verify_result'] ?? null,
+        ];
+
+        curl_close($ch);
+        throw new Exception('Erro cURL: ' . json_encode($errorDetails, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     // Verifica resposta HTTP
     if ($httpCode !== 200) {
+        curl_close($ch);
         http_response_code(500);
         echo json_encode([
             'success' => false,
             'message' => 'Erro ao validar merchant Apple Pay',
             'http_code' => $httpCode,
-            'apple_response' => $response
+            'apple_response' => $response,
+            'curl_info' => $curlInfo,
+            'payload' => $payload,
+            'validation_url' => $validationURL
         ]);
         exit;
     }
+
+    curl_close($ch);
 
     /**
      * ========================================
