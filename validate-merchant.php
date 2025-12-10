@@ -115,6 +115,19 @@ try {
         throw new Exception('Certificado Apple Pay expirado — gere um novo certificado de pagamento');
     }
 
+    // Valida se o CN do certificado bate com o Merchant ID configurado
+    $certContent = file_get_contents($certPath);
+    $certData = openssl_x509_parse($certContent);
+    $certificateCN = $certData['subject']['CN'] ?? null;
+
+    if ($certificateCN === null) {
+        throw new Exception('Não foi possível ler o CN do certificado Apple Pay');
+    }
+
+    if ($certificateCN !== $merchantIdentifier) {
+        throw new Exception("O CN do certificado ({$certificateCN}) difere do Merchant ID configurado ({$merchantIdentifier})");
+    }
+
     /**
      * ========================================
      * REQUISIÇÃO SERVER-TO-SERVER PARA APPLE
