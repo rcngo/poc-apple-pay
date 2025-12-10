@@ -26,6 +26,10 @@ openssl pkcs12 -in apple_pay_cert.p12 -out certs/apple_pay_cert.pem -clcerts -no
 
 # Extrair chave privada
 openssl pkcs12 -in apple_pay_cert.p12 -out certs/apple_pay_key.pem -nocerts -nodes
+
+# Se o seu .p12 tem senha e você quiser manter a chave protegida,
+# remova o -nodes e defina APPLE_PAY_KEY_PASSPHRASE com a mesma senha:
+# APPLE_PAY_KEY_PASSPHRASE=minha-senha php -S localhost:8000
 ```
 
 ### 3. Configurar o validate-merchant.php
@@ -124,6 +128,13 @@ Integração Apple Pay/
 - Confirme que o host usado no navegador corresponde ao domínio verificado. Se estiver atrás de proxy ou ngrok, defina `APPLE_PAY_DOMAIN=seudominio.com` para evitar que a porta ou o host interno sejam enviados para a Apple.
 - Rode `php verificar-certificados.php` e verifique se aparece `CN do certificado bate com o Merchant ID`. Caso contrário, gere um novo certificado usando o Merchant ID correto.
 - Se o backend continuar retornando 500, copie o JSON de erro (inclui `http_code`, `apple_response` e `payload`) e valide se o `initiativeContext` enviado é exatamente o domínio aprovado pela Apple.
+
+### "Load failed" ou erro cURL ao validar
+
+- Verifique se o certificado **ainda é válido** e se o relógio do servidor está correto (`verificar-certificados.php` já mostra as datas).
+- Se a chave privada tiver senha, defina `APPLE_PAY_KEY_PASSPHRASE` com a mesma senha usada no `.p12` (o backend agora passa essa senha ao cURL).
+- Confirme que os arquivos `certs/apple_pay_cert.pem` e `certs/apple_pay_key.pem` são legíveis pelo usuário que roda o PHP (permissões 600/700 na pasta).
+- Cheque o JSON retornado pelo endpoint: ele inclui `curl_info` para identificar TLS/handshake e `apple_response` quando a Apple respondeu algo diferente de 200.
 
 ### Erro CORS
 - Se testar de domínio diferente, ajuste o header `Access-Control-Allow-Origin`
