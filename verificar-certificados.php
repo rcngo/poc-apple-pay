@@ -17,8 +17,8 @@ $warnings = [];
 $success = [];
 
 // Caminhos dos certificados
-$certPath = __DIR__ . '/certs/apple_pay_cert.pem';
-$keyPath = __DIR__ . '/certs/apple_pay_key.pem';
+$certPath = __DIR__ . '/certs/merchant_cert.pem';
+$keyPath = __DIR__ . '/certs/merchant_key.pem';
 
 // ==========================================
 // 1. Verificar se os arquivos existem
@@ -26,16 +26,16 @@ $keyPath = __DIR__ . '/certs/apple_pay_key.pem';
 echo "📁 1. Verificando arquivos...\n";
 
 if (file_exists($certPath)) {
-    $success[] = "✅ Certificado encontrado: apple_pay_cert.pem";
+    $success[] = "✅ Certificado encontrado: merchant_cert.pem";
 } else {
-    $errors[] = "❌ Certificado NÃO encontrado: certs/apple_pay_cert.pem";
+    $errors[] = "❌ Certificado NÃO encontrado: certs/merchant_cert.pem";
     $warnings[] = "   → Siga o GUIA-CERTIFICADOS-APPLE-PAY.md para gerar";
 }
 
 if (file_exists($keyPath)) {
-    $success[] = "✅ Chave privada encontrada: apple_pay_key.pem";
+    $success[] = "✅ Chave privada encontrada: merchant_key.pem";
 } else {
-    $errors[] = "❌ Chave privada NÃO encontrada: certs/apple_pay_key.pem";
+    $errors[] = "❌ Chave privada NÃO encontrada: certs/merchant_key.pem";
     $warnings[] = "   → Siga o GUIA-CERTIFICADOS-APPLE-PAY.md para gerar";
 }
 
@@ -101,8 +101,10 @@ echo "\n";
 // ==========================================
 echo "📅 4. Verificando validade...\n";
 
-$certData = openssl_x509_parse(file_get_contents($certPath));
-$certificateCN = $certData['subject']['CN'] ?? null;
+$certData      = openssl_x509_parse(file_get_contents($certPath));
+$certificateCN = $certData['subject']['CN']  ?? null;
+$certificateUID = $certData['subject']['UID'] ?? null;
+
 if ($certData) {
     $validFrom = date('d/m/Y H:i:s', $certData['validFrom_time_t']);
     $validTo = date('d/m/Y H:i:s', $certData['validTo_time_t']);
@@ -211,15 +213,15 @@ if (file_exists($validateFile)) {
     }
 
     // Validar se o certificado foi emitido para o mesmo Merchant ID configurado
-    if ($merchantId && $certificateCN) {
-        if ($merchantId === $certificateCN) {
-            $success[] = "✅ CN do certificado bate com o Merchant ID ($merchantId)";
+    if ($merchantId && $certificateUID) {
+        if ($merchantId === $certificateUID) {
+            $success[] = "✅ UID do certificado bate com o Merchant ID ($merchantId)";
         } else {
-            $errors[] = "❌ CN do certificado ($certificateCN) difere do Merchant ID ($merchantId)";
-            $warnings[] = "   → Gere o CSR usando o Merchant ID correto no campo CN";
+            $errors[] = "❌ UID do certificado ($certificateUID) difere do Merchant ID ($merchantId)";
+            $warnings[] = "   → Verifique se o certificado foi emitido para o Merchant ID correto no painel da Apple";
         }
-    } elseif (!$certificateCN) {
-        $warnings[] = "⚠️  Não foi possível ler o CN do certificado para comparar com o Merchant ID";
+    } elseif ($merchantId && !$certificateUID) {
+        $warnings[] = "⚠️  Não foi possível ler o UID (Merchant ID) do certificado para validar contra $merchantId";
     }
 } else {
     $errors[] = "❌ validate-merchant.php não encontrado";

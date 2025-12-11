@@ -111,8 +111,8 @@ header('Content-Type: text/html; charset=utf-8');
     // 3. Verificar certificados
     echo '<h2>🔐 Certificados Apple Pay</h2>';
     
-    $certPath = __DIR__ . '/certs/apple_pay_cert.pem';
-    $keyPath = __DIR__ . '/certs/apple_pay_key.pem';
+    $certPath = __DIR__ . '/certs/merchant_cert.pem';
+    $keyPath = __DIR__ . '/certs/merchant_key.pem';
     
     $certExists = file_exists($certPath);
     $keyExists = file_exists($keyPath);
@@ -120,14 +120,14 @@ header('Content-Type: text/html; charset=utf-8');
     if ($certExists && $keyExists) {
         echo '<div class="success-box">';
         echo '<span class="check">✅ Certificados encontrados</span><br>';
-        echo 'Certificado: <code>certs/apple_pay_cert.pem</code><br>';
-        echo 'Chave: <code>certs/apple_pay_key.pem</code>';
+        echo 'Certificado: <code>certs/merchant_cert.pem</code><br>';
+        echo 'Chave: <code>certs/merchant_key.pem</code>';
         echo '</div>';
     } else {
         echo '<div class="error-box">';
         echo '<span class="error">❌ Certificados não encontrados</span><br>';
-        if (!$certExists) echo '- Faltando: <code>certs/apple_pay_cert.pem</code><br>';
-        if (!$keyExists) echo '- Faltando: <code>certs/apple_pay_key.pem</code><br>';
+        if (!$certExists) echo '- Faltando: <code>certs/merchant_cert.pem</code><br>';
+        if (!$keyExists) echo '- Faltando: <code>certs/merchant_key.pem</code><br>';
         echo '</div>';
         $errors++;
     }

@@ -76,11 +76,11 @@ if (is_dir($certsDir)) {
 
 // 5. Verificar certificados
 echo "\n5. Verificando certificados Apple Pay...\n";
-$certPath = $certsDir . '/apple_pay_cert.pem';
-$keyPath = $certsDir . '/apple_pay_key.pem';
+$certPath = $certsDir . '/merchant_cert.pem';
+$keyPath = $certsDir . '/merchant_key.pem';
 
 if (file_exists($certPath)) {
-    echo "   apple_pay_cert.pem: encontrado {$verde}✓{$reset}\n";
+    echo "   merchant_cert.pem: encontrado {$verde}✓{$reset}\n";
     
     // Tentar ler informações do certificado
     $certData = @file_get_contents($certPath);
@@ -109,12 +109,12 @@ if (file_exists($certPath)) {
         $erros++;
     }
 } else {
-    echo "   {$vermelho}✗ apple_pay_cert.pem não encontrado!{$reset}\n";
+    echo "   {$vermelho}✗ merchant_cert.pem não encontrado!{$reset}\n";
     $erros++;
 }
 
 if (file_exists($keyPath)) {
-    echo "   apple_pay_key.pem: encontrado {$verde}✓{$reset}\n";
+    echo "   merchant_key.pem: encontrado {$verde}✓{$reset}\n";
     
     $keyData = @file_get_contents($keyPath);
     if ($keyData && (strpos($keyData, 'BEGIN PRIVATE KEY') !== false || strpos($keyData, 'BEGIN RSA PRIVATE KEY') !== false)) {
@@ -124,7 +124,7 @@ if (file_exists($keyPath)) {
         $erros++;
     }
 } else {
-    echo "   {$vermelho}✗ apple_pay_key.pem não encontrado!{$reset}\n";
+    echo "   {$vermelho}✗ merchant_key.pem não encontrado!{$reset}\n";
     $erros++;
 }
 
@@ -159,7 +159,7 @@ if (file_exists($validateFile)) {
 
 // 7. Verificar HTTPS
 echo "\n7. Verificando ambiente HTTPS...\n";
-if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+if (is_https_active()) {
     echo "   HTTPS: ativo {$verde}✓{$reset}\n";
 } else {
     echo "   {$amarelo}⚠ HTTPS não detectado{$reset}\n";
@@ -211,3 +211,15 @@ if ($erros === 0 && $avisos === 0) {
 
 echo "\n";
 
+function is_https_active() {
+    if (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ||
+        (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+        (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
+    ) {
+        return true;
+    }
+
+    return false;
+}

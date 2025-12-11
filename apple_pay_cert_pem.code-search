@@ -1,0 +1,128 @@
+# Query: apple_pay_cert.pem
+# ContextLines: 1
+
+30 resultados - 7 arquivos
+
+GUIA-CERTIFICADOS-APPLE-PAY.md:
+   26  - **Quando é usado**: No `validate-merchant.php` para autenticar no servidor Apple
+   27: - **Arquivo gerado**: `merchant_cert.pem` + `apple_pay_key.pem`
+   28  - **👉 ESTE É O QUE VOCÊ PRECISA AGORA!**
+
+  187  # Converta de .cer para .pem
+  188: openssl x509 -inform der -in merchant_id.cer -out merchant_cert.pem
+  189  
+  190  # Mova para a pasta certs do projeto
+  191: mv merchant_cert.pem "/Users/marcelo/Documents/Integração Apple Pay/certs/"
+  192  ```
+
+  203  -rw------- 1 marcelo staff 1679 Dec  9 10:00 apple_pay_key.pem
+  204: -rw------- 1 marcelo staff 1234 Dec  9 10:00 merchant_cert.pem
+  205  ```
+
+  209  ```bash
+  210: chmod 600 merchant_cert.pem
+  211  chmod 600 apple_pay_key.pem
+
+  223  # Ver o certificado
+  224: openssl x509 -in merchant_cert.pem -text -noout
+  225  
+
+  233  # Extrair o módulo do certificado
+  234: openssl x509 -noout -modulus -in merchant_cert.pem | openssl md5
+  235  
+
+  286  Certifique-se de ter:
+  287: - `merchant_cert.pem`
+  288  - `apple_pay_key.pem`
+
+  335     ```bash
+  336:    openssl x509 -in certs/merchant_cert.pem -noout -dates
+  337     ```
+
+  362  ```bash
+  363: openssl x509 -inform der -in merchant_id.cer -out merchant_cert.pem
+  364  ```
+
+  374  ├── certs/
+  375: │   ├── merchant_cert.pem      # ✅ Certificado público (baixado da Apple)
+  376  │   ├── apple_pay_key.pem       # ✅ Chave privada (gerada por você)
+
+  402  # Extrair certificado
+  403: openssl pkcs12 -in apple_pay.p12 -out merchant_cert.pem -clcerts -nokeys
+  404  
+
+INICIO-RAPIDO.md:
+   23  # Deve mostrar:
+   24: # merchant_cert.pem
+   25  # apple_pay_key.pem
+
+  113  ### ❌ "Certificado não encontrado"
+  114: - Os arquivos estão em `certs/merchant_cert.pem` e `certs/apple_pay_key.pem`?
+  115  - Execute: `chmod 600 certs/*.pem`
+
+  166  - [ ] Certificados gerados (veja `GUIA-CERTIFICADOS-APPLE-PAY.md`)
+  167: - [ ] Certificados na pasta `certs/` (merchant_cert.pem + apple_pay_key.pem)
+  168  - [ ] Merchant ID configurado em `validate-merchant.php`
+
+README-CONFIGURACAO.md:
+   24  # Extrair certificado
+   25: openssl pkcs12 -in apple_pay_cert.p12 -out certs/merchant_cert.pem -clcerts -nokeys
+   26  
+
+   96  ├── certs/                       # 🔒 Certificados (criar)
+   97: │   ├── merchant_cert.pem      # Certificado público
+   98  │   └── apple_pay_key.pem       # Chave privada
+
+  122  3. O `validate-merchant.php` usa o mesmo Merchant ID e domínio (ou define `APPLE_PAY_DOMAIN` com o host verificado).
+  123: 4. `certs/merchant_cert.pem` e `certs/apple_pay_key.pem` existem, estão em formato PEM e com permissões 600.
+  124  5. O teste `php verificar-certificados.php` não retorna erros.
+
+  135  - Se a chave privada tiver senha, defina `APPLE_PAY_KEY_PASSPHRASE` com a mesma senha usada no `.p12` (o backend agora passa essa senha ao cURL).
+  136: - Confirme que os arquivos `certs/merchant_cert.pem` e `certs/apple_pay_key.pem` são legíveis pelo usuário que roda o PHP (permissões 600/700 na pasta).
+  137  - Cheque o JSON retornado pelo endpoint: ele inclui `curl_info` para identificar TLS/handshake e `apple_response` quando a Apple respondeu algo diferente de 200.
+
+README.md:
+   39  │   ├── README.md
+   40: │   ├── merchant_cert.pem                    (você vai gerar)
+   41  │   └── apple_pay_key.pem                     (você vai gerar)
+
+   89  certs/
+   90: ├── merchant_cert.pem    # Certificado público (da Apple)
+   91  └── apple_pay_key.pem     # Chave privada (gerada por você)
+
+  247  # Deve mostrar:
+  248: # certs/merchant_cert.pem
+  249  # certs/apple_pay_key.pem
+
+test-config.php:
+   78  echo "\n5. Verificando certificados Apple Pay...\n";
+   79: $certPath = $certsDir . '/merchant_cert.pem';
+   80  $keyPath = $certsDir . '/apple_pay_key.pem';
+
+   82  if (file_exists($certPath)) {
+   83:     echo "   merchant_cert.pem: encontrado {$verde}✓{$reset}\n";
+   84      
+
+  111  } else {
+  112:     echo "   {$vermelho}✗ merchant_cert.pem não encontrado!{$reset}\n";
+  113      $erros++;
+
+test-ngrok.php:
+  113      
+  114:     $certPath = __DIR__ . '/certs/merchant_cert.pem';
+  115      $keyPath = __DIR__ . '/certs/apple_pay_key.pem';
+
+  122          echo '<span class="check">✅ Certificados encontrados</span><br>';
+  123:         echo 'Certificado: <code>certs/merchant_cert.pem</code><br>';
+  124          echo 'Chave: <code>certs/apple_pay_key.pem</code>';
+
+  128          echo '<span class="error">❌ Certificados não encontrados</span><br>';
+  129:         if (!$certExists) echo '- Faltando: <code>certs/merchant_cert.pem</code><br>';
+  130          if (!$keyExists) echo '- Faltando: <code>certs/apple_pay_key.pem</code><br>';
+
+verificar-certificados.php:
+  28  if (file_exists($certPath)) {
+  29:     $success[] = "✅ Certificado encontrado: merchant_cert.pem";
+  30  } else {
+  31:     $errors[] = "❌ Certificado NÃO encontrado: certs/merchant_cert.pem";
+  32      $warnings[] = "   → Siga o GUIA-CERTIFICADOS-APPLE-PAY.md para gerar";
